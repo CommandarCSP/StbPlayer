@@ -1,35 +1,32 @@
 package com.example.stbplayer;
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-
 import android.Manifest;
-import android.app.Activity;
-import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.media.MediaPlayer;
+
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.StrictMode;
-import android.provider.Settings;
 import android.util.Log;
-import android.view.View;
 import android.widget.Button;
-import android.widget.MediaController;
-import android.widget.VideoView;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
+import org.videolan.libvlc.LibVLC;
+import org.videolan.libvlc.Media;
+import org.videolan.libvlc.MediaPlayer;
+import org.videolan.libvlc.util.VLCVideoLayout;
+
 import java.io.File;
-import java.io.FileOutputStream;
-import java.net.URL;
-import java.net.URLConnection;
+import java.io.IOException;
+import java.util.ArrayList;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 
 public class MainActivity extends AppCompatActivity {
+
+    private static final boolean USE_TEXTURE_VIEW = false;
+    private static final boolean ENABLE_SUBTITLES = true;
 
     private static final String TAG = "MainActivity";
 
@@ -39,7 +36,13 @@ public class MainActivity extends AppCompatActivity {
             Manifest.permission.WRITE_EXTERNAL_STORAGE
     };
 
-    VideoView videoView;
+//    VideoView videoView;
+
+    private VLCVideoLayout mVideoLayout = null;
+
+    private LibVLC mLibVLC = null;
+    private MediaPlayer mMediaPlayer = null;
+
 
     Button btnSend;
 
@@ -51,16 +54,24 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
-        StrictMode.setVmPolicy(builder.build());
+//        StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
+//        StrictMode.setVmPolicy(builder.build());
 
-        setPermissionsStorage();
+//        setPermissionsStorage();
 
-        videoView = findViewById(R.id.videoView);
+//        videoView = findViewById(R.id.videoView);
         btnSend = findViewById(R.id.btnSend);
 
 
-        videoView.setMediaController(new MediaController(this));
+        final ArrayList<String> args = new ArrayList<>();
+        args.add("-vvv");
+        mLibVLC = new LibVLC(this, args);
+
+        mMediaPlayer = new MediaPlayer(mLibVLC);
+
+        mVideoLayout = findViewById(R.id.video_layout);
+
+
         multicastManager = new MulticastManager();
 
         btnSend.setOnClickListener(v -> {
@@ -73,34 +84,9 @@ public class MainActivity extends AppCompatActivity {
 
         });
 
-//        videoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-//            @Override
-//            public void onPrepared(MediaPlayer mediaPlayer) {
-//
-//
-//
-//                try {
-//
-//                    mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-//                        @Override
-//                        public void onCompletion(MediaPlayer mediaPlayer) {
-//                            Log.d(TAG, "onCompletion");
-//                            mediaPlayer.release();
-//                        }
-//                    });
-//                    Log.d(TAG, "onPrepared");
-//                    videoView.start();
-//                } catch(Exception e) {
-//                    Log.e(TAG, e.toString());
-//                }
-//
-//
-//            }
-//        });
 
-//        Uri videoUri = Uri.parse("https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4");
-//        videoView.setVideoURI(videoUri);
-//
+        mMediaPlayer.attachViews(mVideoLayout, null, ENABLE_SUBTITLES, USE_TEXTURE_VIEW);
+
 
         jschWrapper = new JSchWrapper();
 
@@ -117,27 +103,32 @@ public class MainActivity extends AppCompatActivity {
                 jschWrapper.getLs();
                 try {
 
-                    String filePath = getFilePath("sample.mp4");
+                    String filePath = getFilePath("sample4.avi");
                     File file = new File(filePath);
 
                     if(file.exists()) {
-//                        Uri videoUri = Uri.fromFile(file);
-                        Uri videoUri = Uri.fromFile(file);
+                        try {
+                            final Media media = new Media(mLibVLC, Uri.fromFile(file));
+                            media.setHWDecoderEnabled(false, false);
+                            mMediaPlayer.setMedia(media);
+                            media.release();
+                        } catch (Exception e) {
+                            Log.e(TAG, e.toString());
 
-
-                         runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                videoView.setVideoURI(videoUri);
-                                videoView.start();
-                            }
-                        });
-
+                        }
+                        mMediaPlayer.play();
 
                     } else {
-                        jschWrapper.downloadFile("/home/h9ftpuser/www/antd-storybook/sample-mp4-file.mp4",filePath,true);
-                        Uri videoUri = Uri.fromFile(file);
-                        videoView.setVideoURI(videoUri);
+                        jschWrapper.downloadFile("/home/h9ftpuser/www/antd-storybook/drop.avi",filePath,true);
+                        try {
+                            final Media media = new Media(mLibVLC, Uri.fromFile(file));
+                            mMediaPlayer.setMedia(media);
+                            media.release();
+                        } catch (Exception e) {
+                            Log.e(TAG, e.toString());
+
+                        }
+                        mMediaPlayer.play();
                     }
 
 
