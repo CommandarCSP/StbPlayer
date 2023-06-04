@@ -21,9 +21,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
@@ -54,6 +58,8 @@ public class MainActivity extends AppCompatActivity {
 
     private MulticastManager multicastManager = null;
 
+    private TimerTask timerTask;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -78,8 +84,16 @@ public class MainActivity extends AppCompatActivity {
 
             new Thread(() -> {
 
-                Log.d("RANDOM", "" + randomPick(2));
+//                Log.d("RANDOM", "" + randomPick(2));
+//
+                Calendar cal = Calendar.getInstance();
+                int hour = 22 + randomPick(7);
+                cal.set(Calendar.HOUR_OF_DAY,hour);
+                Calendar now = Calendar.getInstance();
 
+                Log.d("RANDOM", "" + hour +" " + cal.getTime().toString() + " " + (cal.getTimeInMillis() - now.getTimeInMillis()));
+
+//                cal.set(Calendar.HOUR_OF_DAY,20);
 
 //                multicastManager.send("test");
 
@@ -113,11 +127,16 @@ public class MainActivity extends AppCompatActivity {
 
         ftpProcess();
 
+        startTask();
+
     }
 
     public void ftpProcess() {
 
-        llProgress.setVisibility(View.VISIBLE);
+        runOnUiThread(() -> {
+            llProgress.setVisibility(View.VISIBLE);
+        });
+
         new Thread(() -> {
 
 
@@ -213,6 +232,26 @@ public class MainActivity extends AppCompatActivity {
         Random rand = new Random(seed);
 
         return rand.nextInt(count);
+    }
+
+    public void startTask() {
+
+        timerTask = new TimerTask() {
+
+            @Override
+            public void run() {
+                Log.i("Test", "Timer start");
+                ftpProcess();
+            }
+        };
+        Timer timer = new Timer();
+        Calendar cal = Calendar.getInstance();
+        int hour = 22 + randomPick(7);
+        cal.set(Calendar.HOUR_OF_DAY,hour);
+        Calendar now = Calendar.getInstance();
+        timer.schedule(timerTask, cal.getTimeInMillis() - now.getTimeInMillis(), 86400000);
+
+
     }
 
 }
