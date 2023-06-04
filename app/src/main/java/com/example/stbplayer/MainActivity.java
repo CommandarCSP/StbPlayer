@@ -12,13 +12,18 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 
+import org.json.JSONObject;
 import org.videolan.libvlc.LibVLC;
 import org.videolan.libvlc.Media;
 import org.videolan.libvlc.MediaPlayer;
 import org.videolan.libvlc.util.VLCVideoLayout;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -88,10 +93,10 @@ public class MainActivity extends AppCompatActivity {
 //
                 Calendar cal = Calendar.getInstance();
                 int hour = 22 + randomPick(7);
-                cal.set(Calendar.HOUR_OF_DAY,hour);
+                cal.set(Calendar.HOUR_OF_DAY, hour);
                 Calendar now = Calendar.getInstance();
 
-                Log.d("RANDOM", "" + hour +" " + cal.getTime().toString() + " " + (cal.getTimeInMillis() - now.getTimeInMillis()));
+                Log.d("RANDOM", "" + hour + " " + cal.getTime().toString() + " " + (cal.getTimeInMillis() - now.getTimeInMillis()));
 
 //                cal.set(Calendar.HOUR_OF_DAY,20);
 
@@ -125,9 +130,11 @@ public class MainActivity extends AppCompatActivity {
         });
         jschWrapper = new JSchWrapper();
 
-        ftpProcess();
+//        ftpProcess();
+//
+//        startTask();
 
-        startTask();
+        get();
 
     }
 
@@ -247,11 +254,60 @@ public class MainActivity extends AppCompatActivity {
         Timer timer = new Timer();
         Calendar cal = Calendar.getInstance();
         int hour = 22 + randomPick(7);
-        cal.set(Calendar.HOUR_OF_DAY,hour);
+        cal.set(Calendar.HOUR_OF_DAY, hour);
         Calendar now = Calendar.getInstance();
         timer.schedule(timerTask, cal.getTimeInMillis() - now.getTimeInMillis(), 86400000);
 
 
     }
 
+    public void get() {
+
+
+
+        new Thread(() -> {
+
+            try {
+                Log.d(TAG, "start");
+                //get 요청할 url을 적어주시면 됩니다. 형태를 위해 저는 그냥 아무거나 적은 겁니다.
+                URL url = new URL("http://tempuri.org/Search_DMSGroup_PLAYER");
+                HttpURLConnection con = (HttpURLConnection) url.openConnection();
+                con.setConnectTimeout(5000); //서버에 연결되는 Timeout 시간 설정
+                con.setReadTimeout(5000); // InputStream 읽어 오는 Timeout 시간 설정
+                con.setRequestMethod("GET");
+
+                //URLConnection에 대한 doOutput 필드값을 지정된 값으로 설정합니다.
+                //URL 연결은 입출력에 사용될 수 있어요.
+                //URL 연결을 출력용으로 사용하려는 경우 DoOutput 플래그를 true로 설정하고,
+                //그렇지 않은 경우는 false로 설정하세요. 기본값은 false입니다.
+                con.setDoOutput(false);
+
+                StringBuilder sb = new StringBuilder();
+
+                Log.d(TAG, "" + con.getResponseCode());
+
+                if (con.getResponseCode() == HttpURLConnection.HTTP_OK) {
+                    BufferedReader br = new BufferedReader(
+                            new InputStreamReader(con.getInputStream(), "utf-8"));
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        sb.append(line).append("\n");
+                    }
+                    br.close();
+                    JSONObject responseData = new JSONObject(sb.toString());
+
+                    Log.d(TAG, sb.toString());
+
+
+                } else {
+                    Log.d(TAG, con.getResponseMessage());
+
+                }
+
+            } catch (Exception e) {
+                Log.e(TAG, e.toString());
+            }
+
+        }).start();
+    }
 }
