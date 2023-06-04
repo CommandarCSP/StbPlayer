@@ -12,6 +12,8 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 import java.util.Vector;
 
@@ -62,11 +64,10 @@ public class JSchWrapper {
      *
      * @param remoteFilePath
      * @param localFilePath
-     * @param overwrite
      * @return
      * @throws Exception
      */
-    public boolean downloadFile(String remoteFilePath, String localFilePath, boolean overwrite) throws Exception {
+    public boolean downloadFile(String remoteFilePath, String localFilePath) throws Exception {
         if (remoteFilePath == null || remoteFilePath.length() == 0) {
             return false;
         }
@@ -82,14 +83,6 @@ public class JSchWrapper {
         try {
 
             File destFile = new File(localFilePath);
-            if (destFile.exists()) {
-                if (overwrite) {
-                    destFile.delete();
-                } else {
-                    System.out.println("File Download canceled. File already exists : " + destFile.getAbsolutePath());
-                    return false;
-                }
-            }
 
             // 파일 다운로드
             bis = new BufferedInputStream(channelSftp.get(remoteFilePath));
@@ -193,19 +186,25 @@ public class JSchWrapper {
 
     }
 
-    public void getLs() {
+    public ArrayList<String> getLs() {
 
         try {
-
+            ArrayList<String> result = new ArrayList<>();
             Vector filelist = channelSftp.ls(channelSftp.pwd());
             for (int i = 0; i < filelist.size(); i++) {
                 ChannelSftp.LsEntry entry = (ChannelSftp.LsEntry) filelist.get(i);
-                Log.d("entry", entry.getFilename());
+//                Log.d("entry", entry.getFilename() + " " + entry.getAttrs().isDir());
+                if(!entry.getAttrs().isDir()) {
+                    result.add(entry.getFilename());
+                }
             }
+
+            return result;
         } catch (Exception e) {
             Log.e(TAG, e.toString());
         }
 
+        return null;
     }
 
     public void changeDirectory(String directory_path) {
