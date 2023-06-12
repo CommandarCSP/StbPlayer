@@ -136,10 +136,10 @@ public class MainActivity extends AppCompatActivity {
         jschWrapper = new JSchWrapper();
 
         ftpProcess();
-//
-//        startTask();
 
-//        get();
+        startTask();
+
+
 
     }
 
