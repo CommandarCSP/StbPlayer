@@ -91,7 +91,7 @@ public class JSchWrapper {
             int readCount = 0;
             Log.d(TAG, "DOWNLOAD START");
             while ((readCount = bis.read(buffer)) > 0) {
-                Log.i(TAG, "" + readCount);
+//                Log.i(TAG, "" + readCount);
                 bos.write(buffer, 0, readCount);
             }
             Log.d(TAG, "DOWNLOAD END");
@@ -186,16 +186,16 @@ public class JSchWrapper {
 
     }
 
-    public ArrayList<String> getLs() {
+    public ArrayList<VideoFile> getLs() {
 
         try {
-            ArrayList<String> result = new ArrayList<>();
+            ArrayList<VideoFile> result = new ArrayList<>();
             Vector filelist = channelSftp.ls(channelSftp.pwd());
             for (int i = 0; i < filelist.size(); i++) {
                 ChannelSftp.LsEntry entry = (ChannelSftp.LsEntry) filelist.get(i);
-//                Log.d("entry", entry.getFilename() + " " + entry.getAttrs().isDir());
-                if(!entry.getAttrs().isDir()) {
-                    result.add(entry.getFilename());
+//                Log.d("entry", entry.getFilename() + " " + entry.getAttrs().getSize());
+                if (!entry.getAttrs().isDir()) {
+                    result.add(new VideoFile(entry.getFilename(), entry.getAttrs().getSize()));
                 }
             }
 

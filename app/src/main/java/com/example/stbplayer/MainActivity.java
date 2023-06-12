@@ -19,9 +19,13 @@ import org.videolan.libvlc.MediaPlayer;
 import org.videolan.libvlc.util.VLCVideoLayout;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
@@ -33,6 +37,7 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.stream.Collectors;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
@@ -92,7 +97,7 @@ public class MainActivity extends AppCompatActivity {
 //                Log.d("RANDOM", "" + randomPick(2));
 //
                 Calendar cal = Calendar.getInstance();
-                int hour = 22 + randomPick(7);
+                int hour = 22 + Util.randomPick(7);
                 cal.set(Calendar.HOUR_OF_DAY, hour);
                 Calendar now = Calendar.getInstance();
 
@@ -130,13 +135,14 @@ public class MainActivity extends AppCompatActivity {
         });
         jschWrapper = new JSchWrapper();
 
-//        ftpProcess();
+        ftpProcess();
 //
 //        startTask();
 
-        get();
+//        get();
 
     }
+
 
     public void ftpProcess() {
 
@@ -148,31 +154,34 @@ public class MainActivity extends AppCompatActivity {
 
 
             //ftp 접속 및 파일 리스트 가져오기
-            jschWrapper.connectSFTP(hosts.get(randomPick(2)), port, username, password);
-            List<String> fileList = jschWrapper.getLs();
+            jschWrapper.connectSFTP(hosts.get(Util.randomPick(2)), port, username, password);
+            List<VideoFile> fileList = jschWrapper.getLs();
             Log.d(TAG, fileList.toString());
 
             //파일 동기화 (다운로드 및 삭제)
             //local file list
-            ArrayList<String> localfiles = getLocalFiles();
-            Log.d("DEFORE", localfiles.toString());
-            fileList.forEach((fileName) -> {
+            ArrayList<VideoFile> localfiles = Util.getLocalFiles(getBaseContext());
+            Log.d("BEFORE", localfiles.toString());
+            fileList.forEach((videoFile) -> {
 
                 try {
 
-                    localfiles.remove(fileName);
-
-                    String filePath = getFilePath(fileName);
+                    boolean find = localfiles.remove(videoFile);
+                    String filePath = Util.getFilePath(getBaseContext(), videoFile.name);
                     File file = new File(filePath);
 
-                    if (file.exists()) {
+                    if (!find) {
+                        VideoFile findVideoFile = localfiles.stream().filter(_videoFile -> Objects.equals(_videoFile.name, videoFile.name))
+                                .findFirst()
+                                .orElse(null);
+                        localfiles.remove(findVideoFile);
+                        file.delete();
+                    }
 
-//                            playVideoFile(file);
+                    Log.d("File", videoFile.name + " " + file.length());
 
-                    } else {
-                        jschWrapper.downloadFile(fileList.get(0), filePath);
-
-//                            playVideoFile(file);
+                    if (!file.exists()) {
+                        jschWrapper.downloadFile(videoFile.name, filePath);
                     }
 
 
@@ -182,16 +191,27 @@ public class MainActivity extends AppCompatActivity {
 
 
             });
-            Log.d("AFTER", localfiles.toString());
-            localfiles.forEach((localFile) -> {
+            if (fileList.size() == 0) {
+                Util.getLocalFiles(getBaseContext()).forEach((videoFile) -> {
 
-                String filePath = getFilePath(localFile);
+                    String filePath = Util.getFilePath(getBaseContext(), videoFile.name);
+                    File file = new File(filePath);
+                    file.delete();
+
+                });
+            }
+
+            Log.d("AFTER", localfiles.toString());
+
+            localfiles.forEach((videoFile) -> {
+
+                String filePath = Util.getFilePath(getBaseContext(),videoFile.name);
                 File file = new File(filePath);
                 file.delete();
 
             });
 
-            ArrayList<String> afterfileList = getLocalFiles();
+            ArrayList<VideoFile> afterfileList = Util.getLocalFiles(getBaseContext());
             Log.d("DELETE AFTER", afterfileList.toString());
 
 
@@ -205,16 +225,6 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    public String getFilePath(String fileName) {
-        String directory = getExternalFilesDir(null).getAbsolutePath();
-
-        return directory + "/" + fileName;
-    }
-
-    public ArrayList<String> getLocalFiles() {
-
-        return new ArrayList<>(Arrays.asList(Objects.requireNonNull(getExternalFilesDir(null).list())));
-    }
 
     public void playVideoFile(File file) {
 
@@ -233,13 +243,6 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    public int randomPick(int count) {
-
-        long seed = System.currentTimeMillis();
-        Random rand = new Random(seed);
-
-        return rand.nextInt(count);
-    }
 
     public void startTask() {
 
@@ -253,61 +256,12 @@ public class MainActivity extends AppCompatActivity {
         };
         Timer timer = new Timer();
         Calendar cal = Calendar.getInstance();
-        int hour = 22 + randomPick(7);
+        int hour = 22 + Util.randomPick(7);
         cal.set(Calendar.HOUR_OF_DAY, hour);
         Calendar now = Calendar.getInstance();
         timer.schedule(timerTask, cal.getTimeInMillis() - now.getTimeInMillis(), 86400000);
 
-
     }
 
-    public void get() {
 
-
-
-        new Thread(() -> {
-
-            try {
-                Log.d(TAG, "start");
-                //get 요청할 url을 적어주시면 됩니다. 형태를 위해 저는 그냥 아무거나 적은 겁니다.
-                URL url = new URL("http://tempuri.org/Search_DMSGroup_PLAYER");
-                HttpURLConnection con = (HttpURLConnection) url.openConnection();
-                con.setConnectTimeout(5000); //서버에 연결되는 Timeout 시간 설정
-                con.setReadTimeout(5000); // InputStream 읽어 오는 Timeout 시간 설정
-                con.setRequestMethod("GET");
-
-                //URLConnection에 대한 doOutput 필드값을 지정된 값으로 설정합니다.
-                //URL 연결은 입출력에 사용될 수 있어요.
-                //URL 연결을 출력용으로 사용하려는 경우 DoOutput 플래그를 true로 설정하고,
-                //그렇지 않은 경우는 false로 설정하세요. 기본값은 false입니다.
-                con.setDoOutput(false);
-
-                StringBuilder sb = new StringBuilder();
-
-                Log.d(TAG, "" + con.getResponseCode());
-
-                if (con.getResponseCode() == HttpURLConnection.HTTP_OK) {
-                    BufferedReader br = new BufferedReader(
-                            new InputStreamReader(con.getInputStream(), "utf-8"));
-                    String line;
-                    while ((line = br.readLine()) != null) {
-                        sb.append(line).append("\n");
-                    }
-                    br.close();
-                    JSONObject responseData = new JSONObject(sb.toString());
-
-                    Log.d(TAG, sb.toString());
-
-
-                } else {
-                    Log.d(TAG, con.getResponseMessage());
-
-                }
-
-            } catch (Exception e) {
-                Log.e(TAG, e.toString());
-            }
-
-        }).start();
-    }
 }
