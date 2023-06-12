@@ -48,6 +48,8 @@ public class MainActivity extends AppCompatActivity {
     private static final ArrayList<String> hosts = new ArrayList<>(Arrays.asList("192.168.219.101", "192.168.219.101"));
     private static final String username = "test";
     private static final String password = "12341234";
+
+    private static final String groupId = "csp";
     int port = 22;
     private static final boolean USE_TEXTURE_VIEW = false;
     private static final boolean ENABLE_SUBTITLES = true;
@@ -64,17 +66,21 @@ public class MainActivity extends AppCompatActivity {
 
     Button btnSend;
 
+    Button btnReceive;
     private JSchWrapper jschWrapper = null;
 
     private MulticastManager multicastManager = null;
 
     private TimerTask timerTask;
 
+    int testCount = 0;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         btnSend = findViewById(R.id.btnSend);
+        btnReceive = findViewById(R.id.btnReceive);
         llProgress = findViewById(R.id.llProgress);
 
 
@@ -89,6 +95,25 @@ public class MainActivity extends AppCompatActivity {
 
 
         multicastManager = new MulticastManager();
+
+        btnReceive.setOnClickListener((v -> {
+
+            if(testCount % 2 == 0){
+                VideoControl videoControl = new VideoControl("csp","testvideo.mp4");
+
+                controlProcess(videoControl);
+
+                testCount++;
+            } else {
+                VideoControl videoControl = new VideoControl("testvideo.mp4");
+
+                controlProcess(videoControl);
+
+                testCount++;
+            }
+
+
+        }));
 
         btnSend.setOnClickListener(v -> {
 
@@ -121,15 +146,18 @@ public class MainActivity extends AppCompatActivity {
             if (event.type == MediaPlayer.Event.Stopped) {
 //                    Log.d("EVENT","Stopped");
 
-                try {
-                    final Media media = new Media(mLibVLC, Uri.fromFile(lastPlayFile));
-                    mMediaPlayer.setMedia(media);
-                    media.release();
-                } catch (Exception e) {
-                    Log.e(TAG, e.toString());
+                if(lastPlayFile != null) {
+                    try {
+                        final Media media = new Media(mLibVLC, Uri.fromFile(lastPlayFile));
+                        mMediaPlayer.setMedia(media);
+                        media.release();
+                    } catch (Exception e) {
+                        Log.e(TAG, e.toString());
 
+                    }
+                    mMediaPlayer.play();
                 }
-                mMediaPlayer.play();
+
             }
 
         });
@@ -143,7 +171,39 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    public void controlProcess(VideoControl videoControl) {
 
+        if(mMediaPlayer.isPlaying()) {
+            //비디오나 실시간 방송이 플레이 중일때
+            if(videoControl.groupId == null){
+                // 그룹이 안들어오면 플레이 스탑
+                lastPlayFile = null;
+                mMediaPlayer.stop();
+            } else {
+                //그룹이 들어왔는데 내꺼랑 같고 로컬 파일명이 있을때 (기존거랑 같은지, 다른지에 따라 딴파일 재생?)
+                //그룹이 들어오고 내꺼랑 같고 로컬 파일명이 없을때 (실시간 방송 다른거 튼다?)
+            }
+
+        } else {
+            // 비디오 실행중이 아닐때
+            if(videoControl.groupId == null) {
+                //실시간 방송 플레이
+
+            } else if(groupId.equals(videoControl.groupId) && videoControl.videoName != null) {
+                //그룹아이디가 내꺼랑 같고 비디오 네임이 있을때 로컬 파일 플레이 시킴
+                String filePath = Util.getFilePath(getBaseContext(), videoControl.videoName);
+                File file = new File(filePath);
+                playVideoFile(file);
+            }
+
+        }
+
+
+
+
+
+
+    }
     public void ftpProcess() {
 
         runOnUiThread(() -> {
