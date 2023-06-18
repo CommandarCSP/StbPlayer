@@ -60,7 +60,6 @@ public class MainActivity extends AppCompatActivity {
 
     private TimerTask timerTask;
 
-    int testCount = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -225,28 +224,79 @@ public class MainActivity extends AppCompatActivity {
 
         if (mMediaPlayer.isPlaying()) {
             //비디오나 실시간 방송이 플레이 중일때
-            if (videoControl.groupId == null) {
+            if (videoControl.groupId == null || videoControl.groupId.equals("")) {
                 // 그룹이 안들어오면 플레이 스탑
-                lastPlayFile = null;
-                mMediaPlayer.stop();
+                stopPlayer();
             } else {
-                //그룹이 들어왔는데 내꺼랑 같고 로컬 파일명이 있을때 (기존거랑 같은지, 다른지에 따라 딴파일 재생?)
-                //그룹이 들어오고 내꺼랑 같고 로컬 파일명이 없을때 (실시간 방송 다른거 튼다?)
+
+                if (groupId.equals(videoControl.groupId)) {
+
+                    if (videoControl.videoName == null) {
+                        startLiveStream();
+                    } else if (lastPlayFile != null && !videoControl.videoName.equals(lastPlayFile.getName())) {
+                        //다른 파일명으로 바껴서 로컬 비디오 파일 다른걸로 플레이 시켜야함
+                        stopPlayer();
+                        String filePath = Util.getFilePath(getBaseContext(), videoControl.videoName);
+                        File file = new File(filePath);
+                        playVideoFile(file);
+
+                    }
+
+                }
             }
 
         } else {
             // 비디오 실행중이 아닐때
-            if (videoControl.groupId == null) {
-                //실시간 방송 플레이
+            if (videoControl.groupId == null || videoControl.groupId.equals("")) {
+                // 그룹이 안들어오면 플레이 스탑
+                stopPlayer();
+            } else if (groupId.equals(videoControl.groupId)) {
 
-            } else if (groupId.equals(videoControl.groupId) && videoControl.videoName != null) {
-                //그룹아이디가 내꺼랑 같고 비디오 네임이 있을때 로컬 파일 플레이 시킴
-                String filePath = Util.getFilePath(getBaseContext(), videoControl.videoName);
-                File file = new File(filePath);
-                playVideoFile(file);
+                if (videoControl.videoName == null) {
+                    //실시간 방송 플레이
+                    startLiveStream();
+
+                } else {
+                    //그룹아이디가 내꺼랑 같고 비디오 네임이 있을때 로컬 파일 플레이 시킴
+                    String filePath = Util.getFilePath(getBaseContext(), videoControl.videoName);
+                    File file = new File(filePath);
+                    playVideoFile(file);
+                }
+
+
             }
 
+
         }
+
+
+    }
+
+    public void stopPlayer() {
+        Log.d("stopPlayer", "!!");
+        lastPlayFile = null;
+        mMediaPlayer.stop();
+
+    }
+
+    public void startLiveStream() {
+        stopPlayer();
+        Log.d("startLiveStream", "!!");
+        //김태훈 여기보면됨
+        try {
+//            Uri uri = Uri.parse("udp://192.168.219.101:15001");
+//            Uri uri = Uri.parse("udp://@192.168.219.101:10005");
+            Uri uri = Uri.parse("udp://@:10005");
+            final Media media = new Media(mLibVLC, uri);
+            mMediaPlayer.setMedia(media);
+            media.release();
+        } catch (Exception e) {
+            Log.e(TAG, e.toString());
+
+        }
+
+        mMediaPlayer.play();
+
 
 
     }
