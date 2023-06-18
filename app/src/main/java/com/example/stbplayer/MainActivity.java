@@ -1,46 +1,31 @@
 package com.example.stbplayer;
 
-import android.Manifest;
-import android.content.pm.PackageManager;
-
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
-import android.os.StrictMode;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
 
-import org.json.JSONObject;
 import org.videolan.libvlc.LibVLC;
 import org.videolan.libvlc.Media;
 import org.videolan.libvlc.MediaPlayer;
 import org.videolan.libvlc.util.VLCVideoLayout;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
 import java.util.Objects;
-import java.util.Random;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.stream.Collectors;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
+
+import com.google.gson.Gson;
 
 
 public class MainActivity extends AppCompatActivity {
@@ -49,7 +34,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String username = "test";
     private static final String password = "12341234";
 
-    private static final String groupId = "csp";
+    private static final String groupId = "4952@1@1@@@1;4953@1@1@@@1;4954@1@1@@@1;4955@1@1@@@1;4958@1@1@@@1;";
     int port = 22;
     private static final boolean USE_TEXTURE_VIEW = false;
     private static final boolean ENABLE_SUBTITLES = true;
@@ -64,9 +49,11 @@ public class MainActivity extends AppCompatActivity {
 
     private File lastPlayFile = null;
 
-    Button btnSend;
+    Button btnStop;
 
-    Button btnReceive;
+    Button btnLocal;
+
+    Button btnStream;
     private JSchWrapper jschWrapper = null;
 
     private MulticastManager multicastManager = null;
@@ -79,8 +66,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        btnSend = findViewById(R.id.btnSend);
-        btnReceive = findViewById(R.id.btnReceive);
+        btnStop = findViewById(R.id.btnStop);
+        btnLocal = findViewById(R.id.btnLocal);
+        btnStream = findViewById(R.id.btnStream);
         llProgress = findViewById(R.id.llProgress);
 
 
@@ -94,45 +82,84 @@ public class MainActivity extends AppCompatActivity {
         mVideoLayout.setKeepScreenOn(true);
 
 
-        multicastManager = new MulticastManager();
+        multicastManager = new MulticastManager("230.0.0.1", 1234, (String data) -> {
 
-        btnReceive.setOnClickListener((v -> {
+            Gson gson = new Gson();
+            EventModel model = gson.fromJson(data, EventModel.class);
 
-            if(testCount % 2 == 0){
-                VideoControl videoControl = new VideoControl("csp","testvideo.mp4");
+            Log.d(TAG, model.toString());
 
-                controlProcess(videoControl);
+            String groupInfo = model.getGroupinfo();
 
-                testCount++;
+            if (!Objects.equals(groupInfo, "")) {
+
+                Eventinfo[] eventinfos = model.getEventinfo();
+
+
+                if (eventinfos.length > 0) {
+
+                    Eventinfo eventinfo = eventinfos[0];
+
+                    String path = eventinfo.getPev_pft_id();
+
+                    if (path != null && !path.equals("")) {
+
+                        int lastSlashIdx = path.lastIndexOf('\\');
+
+                        String fileName = path.substring(lastSlashIdx + 1, path.length());
+
+                        Log.d("fileName", fileName);
+
+                        VideoControl videoControl = new VideoControl(groupInfo, fileName);
+
+                        controlProcess(videoControl);
+
+                    } else {
+
+                        VideoControl videoControl = new VideoControl(groupInfo);
+                        controlProcess(videoControl);
+
+                    }
+
+
+                }
+
+
             } else {
-                VideoControl videoControl = new VideoControl("testvideo.mp4");
+
+                VideoControl videoControl = new VideoControl();
 
                 controlProcess(videoControl);
 
-                testCount++;
             }
+
+
+        });
+
+        btnStop.setOnClickListener((v -> {
+
+            String testData = getTestJsonData("stop.json");
+
+            multicastManager.send(testData);
 
 
         }));
 
-        btnSend.setOnClickListener(v -> {
+        btnLocal.setOnClickListener(v -> {
 
-            new Thread(() -> {
+            String testData = getTestJsonData("local.json");
 
-//                Log.d("RANDOM", "" + randomPick(2));
-//
-                Calendar cal = Calendar.getInstance();
-                int hour = 22 + Util.randomPick(7);
-                cal.set(Calendar.HOUR_OF_DAY, hour);
-                Calendar now = Calendar.getInstance();
+            multicastManager.send(testData);
 
-                Log.d("RANDOM", "" + hour + " " + cal.getTime().toString() + " " + (cal.getTimeInMillis() - now.getTimeInMillis()));
 
-//                cal.set(Calendar.HOUR_OF_DAY,20);
+        });
 
-//                multicastManager.send("test");
+        btnStream.setOnClickListener(v -> {
 
-            }).start();
+            String testData = getTestJsonData("stream.json");
+
+            multicastManager.send(testData);
+
 
         });
 
@@ -146,7 +173,7 @@ public class MainActivity extends AppCompatActivity {
             if (event.type == MediaPlayer.Event.Stopped) {
 //                    Log.d("EVENT","Stopped");
 
-                if(lastPlayFile != null) {
+                if (lastPlayFile != null) {
                     try {
                         final Media media = new Media(mLibVLC, Uri.fromFile(lastPlayFile));
                         mMediaPlayer.setMedia(media);
@@ -168,14 +195,37 @@ public class MainActivity extends AppCompatActivity {
         startTask();
 
 
+    }
+
+
+    public String getTestJsonData(String jsonPath) {
+
+        String json = "";
+
+        try {
+            InputStream is = getAssets().open(jsonPath);
+            int fileSize = is.available();
+
+            byte[] buffer = new byte[fileSize];
+            is.read(buffer);
+            is.close();
+
+            json = new String(buffer, "UTF-8");
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+
+        return json;
 
     }
 
     public void controlProcess(VideoControl videoControl) {
 
-        if(mMediaPlayer.isPlaying()) {
+        Log.d("controlProcess", videoControl.toString());
+
+        if (mMediaPlayer.isPlaying()) {
             //비디오나 실시간 방송이 플레이 중일때
-            if(videoControl.groupId == null){
+            if (videoControl.groupId == null) {
                 // 그룹이 안들어오면 플레이 스탑
                 lastPlayFile = null;
                 mMediaPlayer.stop();
@@ -186,10 +236,10 @@ public class MainActivity extends AppCompatActivity {
 
         } else {
             // 비디오 실행중이 아닐때
-            if(videoControl.groupId == null) {
+            if (videoControl.groupId == null) {
                 //실시간 방송 플레이
 
-            } else if(groupId.equals(videoControl.groupId) && videoControl.videoName != null) {
+            } else if (groupId.equals(videoControl.groupId) && videoControl.videoName != null) {
                 //그룹아이디가 내꺼랑 같고 비디오 네임이 있을때 로컬 파일 플레이 시킴
                 String filePath = Util.getFilePath(getBaseContext(), videoControl.videoName);
                 File file = new File(filePath);
@@ -199,11 +249,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
 
-
-
-
-
     }
+
     public void ftpProcess() {
 
         runOnUiThread(() -> {
@@ -265,7 +312,7 @@ public class MainActivity extends AppCompatActivity {
 
             localfiles.forEach((videoFile) -> {
 
-                String filePath = Util.getFilePath(getBaseContext(),videoFile.name);
+                String filePath = Util.getFilePath(getBaseContext(), videoFile.name);
                 File file = new File(filePath);
                 file.delete();
 
@@ -274,6 +321,7 @@ public class MainActivity extends AppCompatActivity {
             ArrayList<VideoFile> afterfileList = Util.getLocalFiles(getBaseContext());
             Log.d("DELETE AFTER", afterfileList.toString());
 
+            multicastManager.receive();
 
             runOnUiThread(() -> {
                 llProgress.setVisibility(View.GONE);

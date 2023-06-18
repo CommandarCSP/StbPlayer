@@ -13,14 +13,22 @@ public class MulticastManager {
     MulticastSocket ms;
     InetAddress ia;
 
+    int port;
 
-    public MulticastManager() {
+    ReceiveCallback receiveCallback;
+
+    public interface ReceiveCallback {
+        public void onGetMessage(String data);
+    }
+
+    public MulticastManager(String host, int port, ReceiveCallback callback) {
 
         try {
 
-            ms = new MulticastSocket();
-            ia = InetAddress.getByName("239.255.255.0");
-
+            ms = new MulticastSocket(port);
+            ia = InetAddress.getByName(host);
+            this.port = port;
+            this.receiveCallback = callback;
 
         } catch (Exception e) {
             Log.e(TAG, e.toString());
@@ -28,17 +36,56 @@ public class MulticastManager {
     }
 
     public void send(String data) {
-        try {
-            Log.d(TAG,"SEND");
-            byte[] _data = data.getBytes();
-            DatagramPacket dp = new DatagramPacket(_data,_data.length, ia, 1234);
 
-            ms.send(dp);
+        new Thread(() -> {
 
-        } catch (Exception e) {
-            Log.e(TAG, e.toString());
-        }
+            try {
+                Log.d(TAG, "SEND");
+                byte[] _data = data.getBytes();
 
+                DatagramPacket dp = new DatagramPacket(_data, _data.length, ia, port);
+
+                ms.send(dp);
+
+            } catch (Exception e) {
+                Log.e(TAG + "Send", e.toString());
+            }
+
+        }).start();
+    }
+
+    public void receive() {
+
+        new Thread(() -> {
+
+            try {
+                Log.d(TAG, "receive");
+                byte[] _data = new byte[1024];
+
+                ms.joinGroup(ia);
+
+                DatagramPacket dp = new DatagramPacket(_data, _data.length);
+                int len = 0;
+
+                while (true) {
+                    ms.receive(dp);
+
+                    len = dp.getLength();
+                    String recvData = new String(_data, 0, len);
+
+//                    Log.d(TAG, len + " " + recvData);
+
+                    if(this.receiveCallback != null) {
+                        this.receiveCallback.onGetMessage(recvData);
+                    }
+
+                }
+
+            } catch (Exception e) {
+                Log.e(TAG + "Recv", e.toString());
+            }
+
+        }).start();
 
     }
 }

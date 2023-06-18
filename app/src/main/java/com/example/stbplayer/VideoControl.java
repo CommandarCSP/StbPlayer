@@ -10,10 +10,10 @@ public class VideoControl {
         this.videoName = videoName;
     }
 
-    public VideoControl(String videoName) {
-        this.videoName = videoName;
-    }
+    public VideoControl(String groupId) {
+        this.groupId = groupId;
 
+    }
     public VideoControl() {
 
     }
@@ -32,5 +32,14 @@ public class VideoControl {
 
     public void setVideoName(String videoName) {
         this.videoName = videoName;
+    }
+
+
+    @Override
+    public String toString() {
+        return "VideoControl{" +
+                "groupId='" + groupId + '\'' +
+                ", videoName='" + videoName + '\'' +
+                '}';
     }
 }

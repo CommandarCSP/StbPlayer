@@ -29,21 +29,30 @@
 
 
     <Button
-        android:id="@+id/btnSend"
+        android:id="@+id/btnStop"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="전송"
-        app:layout_constraintLeft_toRightOf="@id/btnReceive"
-        app:layout_constraintRight_toRightOf="parent"
+        android:text="스탑"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toLeftOf="@id/btnLocal"
         app:layout_constraintBottom_toBottomOf="parent" />
 
     <Button
-        android:id="@+id/btnReceive"
+        android:id="@+id/btnLocal"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="패킷 받기"
-        app:layout_constraintRight_toLeftOf="@id/btnSend"
-        app:layout_constraintLeft_toLeftOf="parent"
+        android:text="로컬"
+        app:layout_constraintLeft_toRightOf="@id/btnStop"
+        app:layout_constraintRight_toLeftOf="@id/btnStream"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
+    <Button
+        android:id="@+id/btnStream"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="실시간"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintLeft_toRightOf="@id/btnLocal"
         app:layout_constraintBottom_toBottomOf="parent" />
 
     <LinearLayout
