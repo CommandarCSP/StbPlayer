@@ -34,7 +34,7 @@ public class MainActivity extends AppCompatActivity {
     private static final String username = "test";
     private static final String password = "12341234";
 
-    private static final String groupId = "4952@1@1@@@1;4953@1@1@@@1;4954@1@1@@@1;4955@1@1@@@1;4958@1@1@@@1;";
+    private static String groupId;
     int port = 22;
     private static final boolean USE_TEXTURE_VIEW = false;
     private static final boolean ENABLE_SUBTITLES = true;
@@ -188,6 +188,7 @@ public class MainActivity extends AppCompatActivity {
 
         });
         jschWrapper = new JSchWrapper();
+
 
         ftpProcess();
 
@@ -373,6 +374,16 @@ public class MainActivity extends AppCompatActivity {
 
             multicastManager.receive();
 
+            GroupIdManager groupIdManager = new GroupIdManager();
+
+            String _groupId = groupIdManager.receiveGroupId();
+
+
+            if(_groupId != null) {
+                groupId = _groupId.replaceAll("\"", "");
+                Log.d("groupId",groupId);
+            }
+
             runOnUiThread(() -> {
                 llProgress.setVisibility(View.GONE);
             });
@@ -404,6 +415,9 @@ public class MainActivity extends AppCompatActivity {
 
     public void startTask() {
 
+        if(timerTask != null) {
+            timerTask.cancel();
+        }
         timerTask = new TimerTask() {
 
             @Override
