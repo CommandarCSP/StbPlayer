@@ -285,9 +285,9 @@ public class MainActivity extends AppCompatActivity {
         Log.d("startLiveStream", "!!");
         //김태훈 여기보면됨
         try {
-//            Uri uri = Uri.parse("udp://192.168.219.101:15001");
+            Uri uri = Uri.parse("udp://192.168.219.101:15001");
 //            Uri uri = Uri.parse("udp://@192.168.219.101:10005");
-            Uri uri = Uri.parse("udp://@:10005");
+//            Uri uri = Uri.parse("udp://@:10005");
             final Media media = new Media(mLibVLC, uri);
             mMediaPlayer.setMedia(media);
             media.release();
