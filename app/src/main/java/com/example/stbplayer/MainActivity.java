@@ -56,7 +56,7 @@ public class MainActivity extends AppCompatActivity {
     Button btnStream;
     private JSchWrapper jschWrapper = null;
 
-    private MulticastManager multicastManager = null;
+    private BroadcastManager broadcastManager = null;
 
     private TimerTask timerTask;
 
@@ -81,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
         mVideoLayout.setKeepScreenOn(true);
 
 
-        multicastManager = new MulticastManager("230.0.0.1", 1234, (String data) -> {
+        broadcastManager = new BroadcastManager("192.168.219.101", 1234, (String data) -> {
 
             Gson gson = new Gson();
             EventModel model = gson.fromJson(data, EventModel.class);
@@ -139,7 +139,7 @@ public class MainActivity extends AppCompatActivity {
 
             String testData = getTestJsonData("stop.json");
 
-            multicastManager.send(testData);
+            broadcastManager.send(testData);
 
 
         }));
@@ -148,7 +148,7 @@ public class MainActivity extends AppCompatActivity {
 
             String testData = getTestJsonData("local.json");
 
-            multicastManager.send(testData);
+            broadcastManager.send(testData);
 
 
         });
@@ -157,7 +157,7 @@ public class MainActivity extends AppCompatActivity {
 
             String testData = getTestJsonData("stream.json");
 
-            multicastManager.send(testData);
+            broadcastManager.send(testData);
 
 
         });
@@ -372,7 +372,7 @@ public class MainActivity extends AppCompatActivity {
             ArrayList<VideoFile> afterfileList = Util.getLocalFiles(getBaseContext());
             Log.d("DELETE AFTER", afterfileList.toString());
 
-            multicastManager.receive();
+            broadcastManager.receive();
 
             GroupIdManager groupIdManager = new GroupIdManager();
 
@@ -380,7 +380,8 @@ public class MainActivity extends AppCompatActivity {
 
 
             if(_groupId != null) {
-                groupId = _groupId.replaceAll("\"", "");
+                String raGroupId = _groupId.replaceAll("\"", "");
+                groupId = raGroupId.substring(raGroupId.length() -4, raGroupId.length());
                 Log.d("groupId",groupId);
             }
 

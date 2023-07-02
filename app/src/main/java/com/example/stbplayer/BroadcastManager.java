@@ -3,14 +3,16 @@ package com.example.stbplayer;
 import android.util.Log;
 
 import java.net.DatagramPacket;
+import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 
-public class MulticastManager {
+public class BroadcastManager {
 
-    public static String TAG = "MulticastManager";
+    public static String TAG = "BroadcastManager";
 
-    MulticastSocket ms;
+    DatagramSocket sendSocket;
+    DatagramSocket recvSocket;
     InetAddress ia;
 
     int port;
@@ -21,11 +23,12 @@ public class MulticastManager {
         public void onGetMessage(String data);
     }
 
-    public MulticastManager(String host, int port, ReceiveCallback callback) {
+    public BroadcastManager(String host, int port, ReceiveCallback callback) {
 
         try {
 
-            ms = new MulticastSocket(port);
+            sendSocket = new DatagramSocket();
+            recvSocket = new DatagramSocket(port);
             ia = InetAddress.getByName(host);
             this.port = port;
             this.receiveCallback = callback;
@@ -45,7 +48,7 @@ public class MulticastManager {
 
                 DatagramPacket dp = new DatagramPacket(_data, _data.length, ia, port);
 
-                ms.send(dp);
+                sendSocket.send(dp);
 
             } catch (Exception e) {
                 Log.e(TAG + "Send", e.toString());
@@ -62,13 +65,11 @@ public class MulticastManager {
                 Log.d(TAG, "receive");
                 byte[] _data = new byte[1024];
 
-                ms.joinGroup(ia);
-
                 DatagramPacket dp = new DatagramPacket(_data, _data.length);
                 int len = 0;
 
                 while (true) {
-                    ms.receive(dp);
+                    recvSocket.receive(dp);
 
                     len = dp.getLength();
                     String recvData = new String(_data, 0, len);
