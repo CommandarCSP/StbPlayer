@@ -1,6 +1,7 @@
 package com.example.stbplayer;
 
 import android.util.Log;
+import android.widget.Toast;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -19,11 +20,19 @@ public class BroadcastManager {
 
     ReceiveCallback receiveCallback;
 
+    ErrorCallback errorCallback;
+
     public interface ReceiveCallback {
         public void onGetMessage(String data);
+
     }
 
-    public BroadcastManager(String host, int port, ReceiveCallback callback) {
+    public interface ErrorCallback {
+
+        public void errorMessage(String data);
+    }
+
+    public BroadcastManager(String host, int port, ReceiveCallback callback, ErrorCallback errorCallback) {
 
         try {
 
@@ -32,6 +41,7 @@ public class BroadcastManager {
             ia = InetAddress.getByName(host);
             this.port = port;
             this.receiveCallback = callback;
+            this.errorCallback = errorCallback;
 
         } catch (Exception e) {
             Log.e(TAG, e.toString());
@@ -74,7 +84,7 @@ public class BroadcastManager {
                     len = dp.getLength();
                     String recvData = new String(_data, 0, len);
 
-//                    Log.d(TAG, len + " " + recvData);
+                    Log.d(TAG, len + " " + recvData);
 
                     if(this.receiveCallback != null) {
                         this.receiveCallback.onGetMessage(recvData);
@@ -84,6 +94,10 @@ public class BroadcastManager {
 
             } catch (Exception e) {
                 Log.e(TAG + "Recv", e.toString());
+                if(this.errorCallback != null) {
+                    this.errorCallback.errorMessage(e.toString());
+                }
+
             }
 
         }).start();

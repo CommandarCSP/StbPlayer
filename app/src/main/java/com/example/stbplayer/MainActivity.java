@@ -6,6 +6,8 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import org.videolan.libvlc.LibVLC;
 import org.videolan.libvlc.Media;
@@ -54,6 +56,8 @@ public class MainActivity extends AppCompatActivity {
     Button btnLocal;
 
     Button btnStream;
+
+    TextView tvText;
     private JSchWrapper jschWrapper = null;
 
     private BroadcastManager broadcastManager = null;
@@ -69,7 +73,7 @@ public class MainActivity extends AppCompatActivity {
         btnLocal = findViewById(R.id.btnLocal);
         btnStream = findViewById(R.id.btnStream);
         llProgress = findViewById(R.id.llProgress);
-
+        tvText = findViewById(R.id.tvText);
 
         final ArrayList<String> args = new ArrayList<>();
         args.add("-vvv");
@@ -81,7 +85,17 @@ public class MainActivity extends AppCompatActivity {
         mVideoLayout.setKeepScreenOn(true);
 
 
-        broadcastManager = new BroadcastManager("192.168.219.101", 1234, (String data) -> {
+        broadcastManager = new BroadcastManager("192.168.219.100", 1234, (String data) -> {
+
+            runOnUiThread(() -> {
+
+                StringBuilder sb = new StringBuilder(tvText.getText().toString());
+
+                sb.append("\n").append(data);
+
+                tvText.setText(sb);
+
+            });
 
             Gson gson = new Gson();
             EventModel model = gson.fromJson(data, EventModel.class);
@@ -131,6 +145,15 @@ public class MainActivity extends AppCompatActivity {
                 controlProcess(videoControl);
 
             }
+
+
+        }, (errorMsg) -> {
+
+            runOnUiThread(() -> {
+
+                Toast.makeText(this, errorMsg, Toast.LENGTH_LONG).show();
+
+            });
 
 
         });
@@ -299,7 +322,6 @@ public class MainActivity extends AppCompatActivity {
         mMediaPlayer.play();
 
 
-
     }
 
     public void ftpProcess() {
@@ -379,10 +401,10 @@ public class MainActivity extends AppCompatActivity {
             String _groupId = groupIdManager.receiveGroupId();
 
 
-            if(_groupId != null) {
+            if (_groupId != null) {
                 String raGroupId = _groupId.replaceAll("\"", "");
-                groupId = raGroupId.substring(raGroupId.length() -4, raGroupId.length());
-                Log.d("groupId",groupId);
+                groupId = raGroupId.substring(raGroupId.length() - 4, raGroupId.length());
+                Log.d("groupId", groupId);
             }
 
             runOnUiThread(() -> {
@@ -416,7 +438,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void startTask() {
 
-        if(timerTask != null) {
+        if (timerTask != null) {
             timerTask.cancel();
         }
         timerTask = new TimerTask() {
