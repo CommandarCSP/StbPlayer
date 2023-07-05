@@ -32,12 +32,12 @@ import com.google.gson.Gson;
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final ArrayList<String> hosts = new ArrayList<>(Arrays.asList("192.168.219.101", "192.168.219.101"));
-    private static final String username = "test";
-    private static final String password = "12341234";
+    private static final ArrayList<String> hosts = new ArrayList<>(Arrays.asList("211.200.11.212", "211.200.11.212"));
+    private static final String username = "bms";
+    private static final String password = "dkagh!11";
 
     private static String groupId;
-    int port = 22;
+    int port = 17099;
     private static final boolean USE_TEXTURE_VIEW = false;
     private static final boolean ENABLE_SUBTITLES = true;
 
@@ -159,6 +159,8 @@ public class MainActivity extends AppCompatActivity {
         });
 
         btnStop.setOnClickListener((v -> {
+
+            Log.d("test btn","!!!");
 
             String testData = getTestJsonData("stop.json");
 
