@@ -85,6 +85,7 @@ public class MainActivity extends AppCompatActivity {
         mVideoLayout.setKeepScreenOn(true);
 
 
+
         broadcastManager = new BroadcastManager("192.168.219.100", 1234, (String data) -> {
 
             runOnUiThread(() -> {
