@@ -256,7 +256,7 @@ public class MainActivity extends AppCompatActivity {
                 stopPlayer();
             } else {
 
-                if (groupId.equals(videoControl.groupId)) {
+                if (videoControl.groupId.contains(groupId)) {
 
                     if (videoControl.videoName == null) {
                         startLiveStream();
@@ -277,7 +277,7 @@ public class MainActivity extends AppCompatActivity {
             if (videoControl.groupId == null || videoControl.groupId.equals("")) {
                 // 그룹이 안들어오면 플레이 스탑
                 stopPlayer();
-            } else if (groupId.equals(videoControl.groupId)) {
+            } else if (videoControl.groupId.contains(groupId)) {
 
                 if (videoControl.videoName == null) {
                     //실시간 방송 플레이
