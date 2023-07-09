@@ -1,7 +1,9 @@
 package com.example.stbplayer;
 
 import android.net.Uri;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
+import android.text.format.Formatter;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -17,27 +19,44 @@ import org.videolan.libvlc.util.VLCVideoLayout;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 import java.util.Objects;
+import java.util.TimeZone;
 import java.util.Timer;
 import java.util.TimerTask;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
 
 import com.google.gson.Gson;
 
 
 public class MainActivity extends AppCompatActivity {
 
-    private static final ArrayList<String> hosts = new ArrayList<>(Arrays.asList("211.200.11.212", "211.200.11.212"));
-    private static final String username = "bms";
-    private static final String password = "dkagh!11";
+    //    private static final ArrayList<String> hosts = new ArrayList<>(Arrays.asList("211.200.11.212", "211.200.11.212"));
+//    private static final String username = "bms";
+//    private static final String password = "dkagh!11";
+//
+//    int port = 17099;
+    private static final ArrayList<String> hosts = new ArrayList<>(Arrays.asList("192.168.219.101", "192.168.219.101"));
+    private static final String username = "test";
+    private static final String password = "12341234";
+    int port = 22;
 
+    private static final String udp_hosts = "192.168.219.100";
+    private static final int udp_port = 1234;
+
+    private static final String log_hosts = "192.168.219.222";
+    private static final int log_port = 1234;
     private static String groupId;
-    int port = 17099;
+    private static String originGroupId;
+
     private static final boolean USE_TEXTURE_VIEW = false;
     private static final boolean ENABLE_SUBTITLES = true;
 
@@ -61,9 +80,15 @@ public class MainActivity extends AppCompatActivity {
     private JSchWrapper jschWrapper = null;
 
     private BroadcastManager broadcastManager = null;
+    private BroadcastManager logBroadcastManager = null;
+
+    private EventModel eventModel;
 
     private TimerTask timerTask;
 
+    private TimerTask logTimerTask;
+
+    private ConstraintLayout clLogo;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,6 +99,7 @@ public class MainActivity extends AppCompatActivity {
         btnStream = findViewById(R.id.btnStream);
         llProgress = findViewById(R.id.llProgress);
         tvText = findViewById(R.id.tvText);
+        clLogo = findViewById(R.id.clLogo);
 
         final ArrayList<String> args = new ArrayList<>();
         args.add("-vvv");
@@ -85,8 +111,7 @@ public class MainActivity extends AppCompatActivity {
         mVideoLayout.setKeepScreenOn(true);
 
 
-
-        broadcastManager = new BroadcastManager("192.168.219.100", 1234, (String data) -> {
+        broadcastManager = new BroadcastManager(udp_hosts, udp_port, (String data) -> {
 
             runOnUiThread(() -> {
 
@@ -101,6 +126,7 @@ public class MainActivity extends AppCompatActivity {
             Gson gson = new Gson();
             EventModel model = gson.fromJson(data, EventModel.class);
 
+            this.eventModel = model;
             Log.d(TAG, model.toString());
 
             String groupInfo = model.getGroupinfo();
@@ -108,7 +134,6 @@ public class MainActivity extends AppCompatActivity {
             if (!Objects.equals(groupInfo, "")) {
 
                 Eventinfo[] eventinfos = model.getEventinfo();
-
 
                 if (eventinfos.length > 0) {
 
@@ -159,9 +184,14 @@ public class MainActivity extends AppCompatActivity {
 
         });
 
+
+        logBroadcastManager = new BroadcastManager(log_hosts, log_port, (String data) -> {
+        }, (String errorMsg) -> {
+        });
+
         btnStop.setOnClickListener((v -> {
 
-            Log.d("test btn","!!!");
+            Log.d("test btn", "!!!");
 
             String testData = getTestJsonData("stop.json");
 
@@ -208,6 +238,11 @@ public class MainActivity extends AppCompatActivity {
 
                     }
                     mMediaPlayer.play();
+                } else {
+                    runOnUiThread(() -> {
+                        clLogo.setVisibility(View.VISIBLE);
+                    });
+
                 }
 
             }
@@ -219,7 +254,6 @@ public class MainActivity extends AppCompatActivity {
         ftpProcess();
 
         startTask();
-
 
     }
 
@@ -301,8 +335,19 @@ public class MainActivity extends AppCompatActivity {
 
     public void stopPlayer() {
         Log.d("stopPlayer", "!!");
+
+        if (logTimerTask != null) {
+
+            logTimerTask.cancel();
+
+        }
         lastPlayFile = null;
         mMediaPlayer.stop();
+
+        runOnUiThread(() -> {
+            clLogo.setVisibility(View.VISIBLE);
+        });
+
 
     }
 
@@ -406,6 +451,7 @@ public class MainActivity extends AppCompatActivity {
 
             if (_groupId != null) {
                 String raGroupId = _groupId.replaceAll("\"", "");
+                originGroupId = raGroupId;
                 groupId = raGroupId.substring(raGroupId.length() - 4, raGroupId.length());
                 Log.d("groupId", groupId);
             }
@@ -418,6 +464,16 @@ public class MainActivity extends AppCompatActivity {
         }).start();
 
 
+    }
+
+    public String getIpAddress() {
+
+        WifiManager wifiManager = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
+        String ipAddress = Formatter.formatIpAddress(wifiManager.getConnectionInfo().getIpAddress());
+
+//        Log.d("ipAddress", ipAddress);
+
+        return ipAddress;
     }
 
 
@@ -435,6 +491,15 @@ public class MainActivity extends AppCompatActivity {
         }
 
         mMediaPlayer.play();
+
+        startLogTask();
+
+        runOnUiThread(() -> {
+
+            clLogo.setVisibility(View.GONE);
+
+        });
+
 
     }
 
@@ -458,6 +523,56 @@ public class MainActivity extends AppCompatActivity {
         cal.set(Calendar.HOUR_OF_DAY, hour);
         Calendar now = Calendar.getInstance();
         timer.schedule(timerTask, cal.getTimeInMillis() - now.getTimeInMillis(), 86400000);
+
+    }
+
+
+    public void startLogTask() {
+
+        if (logTimerTask != null) {
+            logTimerTask.cancel();
+            logTimerTask = null;
+        }
+        logTimerTask = new TimerTask() {
+
+            @Override
+            public void run() {
+                Log.i("logTimerTask", "logTimerTask");
+
+                AccessLogPacket logPacket = new AccessLogPacket();
+                TimeZone tz = TimeZone.getTimeZone("UTC");
+                DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'"); // Quoted "Z" to indicate UTC, no timezone offset
+                df.setTimeZone(tz);
+                String nowAsISO = df.format(new Date());
+                Log.i("nowAsISO", nowAsISO);
+
+                logPacket.setIpaddress(getIpAddress());
+                logPacket.setAccessdate(nowAsISO);
+                logPacket.setUserid(getIpAddress());
+
+                if (originGroupId != null) {
+                    logPacket.setPsg_id(originGroupId);
+                }
+
+                if (eventModel != null) {
+                    if (eventModel.getEventinfo()[0] != null) {
+                        logPacket.setPev_id(eventModel.getEventinfo()[0].pev_id);
+                    }
+                }
+
+                Gson gson = new Gson();
+
+                String json = gson.toJson(logPacket);
+
+                Log.d("logPacket", json);
+
+                logBroadcastManager.send(json);
+
+            }
+        };
+        Timer timer = new Timer();
+        timer.schedule(logTimerTask, 0, 1000 * 60);
+
 
     }
 
