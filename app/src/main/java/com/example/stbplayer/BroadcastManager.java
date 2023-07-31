@@ -32,36 +32,53 @@ public class BroadcastManager {
         public void errorMessage(String data);
     }
 
+    private void clear(){
+
+        if(this.sendSocket != null) {
+            this.sendSocket.disconnect();
+            this.sendSocket.close();
+            this.sendSocket = null;
+        }
+        if(this.recvSocket != null) {
+            this.recvSocket.disconnect();
+            this.recvSocket.close();
+            this.recvSocket = null;
+        }
+    }
     public BroadcastManager(String host, int port, ReceiveCallback callback, ErrorCallback errorCallback) {
 
         try {
 
-            sendSocket = new DatagramSocket();
-            recvSocket = new DatagramSocket(port);
-            ia = InetAddress.getByName(host);
+            this.sendSocket = new DatagramSocket();
+            this.recvSocket = new DatagramSocket(port);
+            this.ia = InetAddress.getByName(host);
+
             this.port = port;
             this.receiveCallback = callback;
             this.errorCallback = errorCallback;
 
         } catch (Exception e) {
             Log.e(TAG, e.toString());
+
         }
     }
 
     public void send(String data) {
 
+
         new Thread(() -> {
 
             try {
-                Log.d(TAG, "SEND");
+
                 byte[] _data = data.getBytes();
+                Log.d(TAG, "SEND" +  this.ia.toString());
+                DatagramPacket dp = new DatagramPacket(_data, _data.length, this.ia, this.port);
 
-                DatagramPacket dp = new DatagramPacket(_data, _data.length, ia, port);
-
-                sendSocket.send(dp);
+                this.sendSocket.send(dp);
 
             } catch (Exception e) {
                 Log.e(TAG + "Send", e.toString());
+
             }
 
         }).start();
@@ -79,7 +96,7 @@ public class BroadcastManager {
                 int len = 0;
 
                 while (true) {
-                    recvSocket.receive(dp);
+                    this.recvSocket.receive(dp);
 
                     len = dp.getLength();
                     String recvData = new String(_data, 0, len);
@@ -97,6 +114,7 @@ public class BroadcastManager {
                 if(this.errorCallback != null) {
                     this.errorCallback.errorMessage(e.toString());
                 }
+
 
             }
 

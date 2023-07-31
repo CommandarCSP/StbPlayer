@@ -44,7 +44,7 @@ public class MainActivity extends AppCompatActivity {
 //    private static final String password = "dkagh!11";
 //
 //    int port = 17099;
-    private static final ArrayList<String> hosts = new ArrayList<>(Arrays.asList("192.168.219.101", "192.168.219.101"));
+    private static final ArrayList<String> hosts = new ArrayList<>(Arrays.asList("192.168.219.102", "192.168.219.102"));
     private static final String username = "test";
     private static final String password = "12341234";
     int port = 22;
@@ -85,6 +85,7 @@ public class MainActivity extends AppCompatActivity {
     private EventModel eventModel;
 
     private TimerTask timerTask;
+    private TimerTask ftpTask;
 
     private TimerTask logTimerTask;
 
@@ -228,7 +229,7 @@ public class MainActivity extends AppCompatActivity {
             if (event.type == MediaPlayer.Event.Stopped) {
 //                    Log.d("EVENT","Stopped");
 
-                if (lastPlayFile != null) {
+                if (lastPlayFile != null && lastPlayFile.exists()) {
                     try {
                         final Media media = new Media(mLibVLC, Uri.fromFile(lastPlayFile));
                         mMediaPlayer.setMedia(media);
@@ -299,6 +300,7 @@ public class MainActivity extends AppCompatActivity {
                         stopPlayer();
                         String filePath = Util.getFilePath(getBaseContext(), videoControl.videoName);
                         File file = new File(filePath);
+
                         playVideoFile(file);
 
                     }
@@ -380,19 +382,18 @@ public class MainActivity extends AppCompatActivity {
 
         new Thread(() -> {
 
+            try {
 
-            //ftp 접속 및 파일 리스트 가져오기
-            jschWrapper.connectSFTP(hosts.get(Util.randomPick(2)), port, username, password);
-            List<VideoFile> fileList = jschWrapper.getLs();
-            Log.d(TAG, fileList.toString());
+                //ftp 접속 및 파일 리스트 가져오기
+                jschWrapper.connectSFTP(hosts.get(Util.randomPick(2)), port, username, password);
+                List<VideoFile> fileList = jschWrapper.getLs();
 
-            //파일 동기화 (다운로드 및 삭제)
-            //local file list
-            ArrayList<VideoFile> localfiles = Util.getLocalFiles(getBaseContext());
-            Log.d("BEFORE", localfiles.toString());
-            fileList.forEach((videoFile) -> {
+                //파일 동기화 (다운로드 및 삭제)
+                //local file list
+                ArrayList<VideoFile> localfiles = Util.getLocalFiles(getBaseContext());
+                Log.d("BEFORE", localfiles.toString());
+                fileList.forEach((videoFile) -> {
 
-                try {
 
                     boolean find = localfiles.remove(videoFile);
                     String filePath = Util.getFilePath(getBaseContext(), videoFile.name);
@@ -409,56 +410,61 @@ public class MainActivity extends AppCompatActivity {
                     Log.d("File", videoFile.name + " " + file.length());
 
                     if (!file.exists()) {
-                        jschWrapper.downloadFile(videoFile.name, filePath);
+                        try {
+                            jschWrapper.downloadFile(videoFile.name, filePath);
+                        } catch (Exception e) {
+                            Log.e(TAG + "2", e.toString());
+                            startFtpProcess();
+                        }
                     }
 
 
-                } catch (Exception e) {
-                    Log.e(TAG, e.toString());
+                });
+                if (fileList.size() == 0) {
+                    Util.getLocalFiles(getBaseContext()).forEach((videoFile) -> {
+
+                        String filePath = Util.getFilePath(getBaseContext(), videoFile.name);
+                        File file = new File(filePath);
+                        file.delete();
+
+                    });
                 }
 
+                Log.d("AFTER", localfiles.toString());
 
-            });
-            if (fileList.size() == 0) {
-                Util.getLocalFiles(getBaseContext()).forEach((videoFile) -> {
+                localfiles.forEach((videoFile) -> {
 
                     String filePath = Util.getFilePath(getBaseContext(), videoFile.name);
                     File file = new File(filePath);
                     file.delete();
 
                 });
+
+                ArrayList<VideoFile> afterfileList = Util.getLocalFiles(getBaseContext());
+                Log.d("DELETE AFTER", afterfileList.toString());
+
+                broadcastManager.receive();
+
+                GroupIdManager groupIdManager = new GroupIdManager();
+
+                String _groupId = groupIdManager.receiveGroupId();
+
+
+                if (_groupId != null) {
+                    String raGroupId = _groupId.replaceAll("\"", "");
+                    originGroupId = raGroupId;
+                    groupId = raGroupId.substring(raGroupId.length() - 4, raGroupId.length());
+                    Log.d("groupId", groupId);
+                }
+
+
+                runOnUiThread(() -> {
+                    llProgress.setVisibility(View.GONE);
+                });
+            } catch (Exception e) {
+                Log.e(TAG, e.toString());
+                startFtpProcess();
             }
-
-            Log.d("AFTER", localfiles.toString());
-
-            localfiles.forEach((videoFile) -> {
-
-                String filePath = Util.getFilePath(getBaseContext(), videoFile.name);
-                File file = new File(filePath);
-                file.delete();
-
-            });
-
-            ArrayList<VideoFile> afterfileList = Util.getLocalFiles(getBaseContext());
-            Log.d("DELETE AFTER", afterfileList.toString());
-
-            broadcastManager.receive();
-
-            GroupIdManager groupIdManager = new GroupIdManager();
-
-            String _groupId = groupIdManager.receiveGroupId();
-
-
-            if (_groupId != null) {
-                String raGroupId = _groupId.replaceAll("\"", "");
-                originGroupId = raGroupId;
-                groupId = raGroupId.substring(raGroupId.length() - 4, raGroupId.length());
-                Log.d("groupId", groupId);
-            }
-
-            runOnUiThread(() -> {
-                llProgress.setVisibility(View.GONE);
-            });
 
 
         }).start();
@@ -481,28 +487,46 @@ public class MainActivity extends AppCompatActivity {
 
         try {
 
-            final Media media = new Media(mLibVLC, Uri.fromFile(file));
-            mMediaPlayer.setMedia(media);
-            lastPlayFile = file;
-            media.release();
+            if (file.exists()) {
+                final Media media = new Media(mLibVLC, Uri.fromFile(file));
+                mMediaPlayer.setMedia(media);
+                lastPlayFile = file;
+                media.release();
+            }
+
+
+            mMediaPlayer.play();
+
+            startLogTask();
+
+            runOnUiThread(() -> {
+
+                clLogo.setVisibility(View.GONE);
+
+            });
         } catch (Exception e) {
-            Log.e(TAG, e.toString());
+            Log.e(TAG + "playVideoFile", e.toString());
 
         }
 
-        mMediaPlayer.play();
-
-        startLogTask();
-
-        runOnUiThread(() -> {
-
-            clLogo.setVisibility(View.GONE);
-
-        });
-
-
     }
 
+    public void startFtpProcess() {
+
+        if (ftpTask != null) {
+            ftpTask.cancel();
+        }
+        ftpTask = new TimerTask() {
+
+            @Override
+            public void run() {
+                ftpProcess();
+            }
+        };
+        Timer timer = new Timer();
+        timer.schedule(ftpTask, 3000);
+
+    }
 
     public void startTask() {
 
